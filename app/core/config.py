@@ -1,10 +1,10 @@
-import os
-from dotenv import load_dotenv
+from pydantic_settings import BaseSettings
 
-load_dotenv()
+class Settings(BaseSettings):
+    APP_NAME: str = "FastAPI UV Starter"
+    DEBUG: bool = True
 
-class Settings:
-    APP_NAME: str = os.getenv("APP_NAME", "FastAPI UV Starter")
-    DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"
+    class Config:
+        env_file = ".env"
 
 settings = Settings()
