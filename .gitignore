@@ -12,3 +12,7 @@ wheels/
 
 whisper_model/large
 whisper_model/small
+temp/
+*.wav
+*.mp3
+*.mp4
