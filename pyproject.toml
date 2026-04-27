@@ -10,6 +10,7 @@ dependencies = [
     "boto3>=1.42.96",
     "fastapi>=0.136.0",
     "faster-whisper>=1.2.1",
+    "google-genai>=1.73.1",
     "pydantic-settings>=2.14.0",
     "pydub>=0.25.1",
     "python-dotenv>=1.2.2",

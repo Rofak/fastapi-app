@@ -1,11 +1,12 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List,Optional
+from app.enum.transcript import Type
 
 class Segment(BaseModel):
     start:float
     end:float
     originalText:str
-    translateText:str
+    translateText:Optional[str] = None
 
 class TranscribeResponse(BaseModel):
     language:str
@@ -16,7 +17,7 @@ class TranscribeResponse(BaseModel):
 class TrancribeRequest(BaseModel):
     video_url:str
     target_lang:str
-
+    type:Type
 
 class VoiceResponse(BaseModel):
     locale:str
@@ -50,3 +51,10 @@ class RenderVideoRequest(BaseModel):
 class LanguageNameResponse(BaseModel):
     locale:str
     name:str
+
+
+
+class GeminiTranscribeResponse(BaseModel):
+    start:str
+    end:str
+    originalText:str

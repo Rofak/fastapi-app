@@ -5,6 +5,7 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     AZURE_TTS_KEY:str
     AZURE_TTS_REGION:str
+    GEMINI_API_KEY:str
 
     class Config:
         env_file = ".env"

@@ -5,11 +5,15 @@ from faster_whisper import WhisperModel
 from typing import List
 from app.schemas.video_dubber_ai import Segment,TranscribeResponse
 from app.services.azure_tts_service import AzureTTSService
+from app.services.google_gemini_ai_service import GoogleGeminiAiService
 from pydub import AudioSegment
 import base64
 import io
+from app.enum.transcript import Type
 
 azureService = AzureTTSService()
+geminiService = GoogleGeminiAiService()
+
 MIN_DURATION_MS = 400   # 👈 minimum for single word (tune this)
 PADDING_MS = 100
 FINAL_OUT_AUDIO ="final_audio.wav"

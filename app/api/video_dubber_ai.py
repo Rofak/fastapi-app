@@ -2,16 +2,23 @@ from fastapi import APIRouter,Request
 from app.schemas.video_dubber_ai import TranscribeResponse,TrancribeRequest,VoiceResponse,GenerateVoiceReqeust,GenerateVoiceResponse,RenderVideoRequest,LanguageNameResponse
 from app.services.video_dubber_ai_service import VideoDubberAIService
 from app.services.azure_tts_service import AzureTTSService
+from app.services.google_gemini_ai_service import GoogleGeminiAiService
 from typing import List
+from app.enum.transcript import Type
 
 router = APIRouter(tags=["Video Dubber AI"],prefix="/video_dubber_ai")
 service = VideoDubberAIService()
 azureService = AzureTTSService() 
+geminiService = GoogleGeminiAiService()
 
 
 @router.post("/transcribe", response_model=TranscribeResponse)
-async def transcribe(reg:TrancribeRequest):
-    return service.transcribe(reg)
+async def transcribe(req:TrancribeRequest):
+    if(req.type == Type.WHISPER):
+        return service.transcribe(req)
+    else:
+        return geminiService.transcribe_from_file_uri(req)
+    
 
 @router.get("/list/voices",response_model=List[VoiceResponse])
 def list_voices():
