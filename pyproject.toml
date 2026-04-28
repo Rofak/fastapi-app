@@ -5,6 +5,8 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "alembic>=1.18.4",
+    "asyncmy>=0.2.11",
     "azure-cognitiveservices-speech>=1.49.1",
     "babel>=2.18.0",
     "boto3>=1.42.96",
@@ -13,7 +15,9 @@ dependencies = [
     "google-genai>=1.73.1",
     "pydantic-settings>=2.14.0",
     "pydub>=0.25.1",
+    "pymysql>=1.1.2",
     "python-dotenv>=1.2.2",
     "requests>=2.33.1",
+    "sqlalchemy>=2.0.49",
     "uvicorn>=0.45.0",
 ]

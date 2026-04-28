@@ -1,15 +1,19 @@
-from fastapi import APIRouter,Request
+from fastapi import APIRouter,Request,Depends
 from app.schemas.video_dubber_ai import TranscribeResponse,TrancribeRequest,VoiceResponse,GenerateVoiceReqeust,GenerateVoiceResponse,RenderVideoRequest,LanguageNameResponse
 from app.services.video_dubber_ai_service import VideoDubberAIService
 from app.services.azure_tts_service import AzureTTSService
 from app.services.google_gemini_ai_service import GoogleGeminiAiService
 from typing import List
 from app.enum.transcript import Type
+from app.deps import db
+from app.repositories.videos_repo import VideoRepositiry
 
 router = APIRouter(tags=["Video Dubber AI"],prefix="/video_dubber_ai")
 service = VideoDubberAIService()
 azureService = AzureTTSService() 
 geminiService = GoogleGeminiAiService()
+
+repo = VideoRepositiry()
 
 
 @router.post("/transcribe", response_model=TranscribeResponse)
@@ -50,3 +54,8 @@ def generate_voices(reqeusts:List[GenerateVoiceReqeust]):
 def render_video(req:RenderVideoRequest):
     service.build_audio_timeline(req)
     return "ok"
+
+
+@router.get("/list_user")
+async def get_list_user(db:Depends=db.get_db()):
+    repo.get_all(db)

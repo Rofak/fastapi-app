@@ -2,8 +2,16 @@ from fastapi import FastAPI
 from app.api.video_dubber_ai import router
 from app.core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.database import engine
+from sqlalchemy import text
 
 app = FastAPI(title=settings.APP_NAME,debug=settings.DEBUG)
+
+@app.on_event("startup")
+async def startup():
+    async with engine.connect() as conn:
+        await conn.execute(text("SELECT 1"))
+        print("✅ DB ready")
 
 origins = [
     "http://localhost:3000",
