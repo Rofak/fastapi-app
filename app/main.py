@@ -7,12 +7,6 @@ from sqlalchemy import text
 
 app = FastAPI(title=settings.APP_NAME,debug=settings.DEBUG)
 
-@app.on_event("startup")
-async def startup():
-    async with engine.connect() as conn:
-        await conn.execute(text("SELECT 1"))
-        print("✅ DB ready")
-
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",

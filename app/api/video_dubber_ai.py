@@ -7,6 +7,7 @@ from typing import List
 from app.enum.transcript import Type
 from app.deps import db
 from app.repositories.videos_repo import VideoRepositiry
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(tags=["Video Dubber AI"],prefix="/video_dubber_ai")
 service = VideoDubberAIService()
@@ -57,5 +58,5 @@ def render_video(req:RenderVideoRequest):
 
 
 @router.get("/list_user")
-async def get_list_user(db:Depends=db.get_db()):
-    repo.get_all(db)
+async def get_list_user(db: AsyncSession = Depends(db.get_db)):
+    return await repo.get_all(db)
