@@ -1,19 +1,18 @@
 import subprocess
-from app.schemas.video_dubber_ai import RenderVideoRequest,TrancribeRequest
+from app.schemas.video_dubber_ai import RenderVideoRequest,TrancribeRequest,VideoRequest
 import requests
 from faster_whisper import WhisperModel
 from typing import List
 from app.schemas.video_dubber_ai import Segment,TranscribeResponse
 from app.services.azure_tts_service import AzureTTSService
-from app.services.google_gemini_ai_service import GoogleGeminiAiService
 from pydub import AudioSegment
 import base64
+import tempfile
+import shutil
 import io
-from app.enum.transcript import Type
+import os,uuid
 
 azureService = AzureTTSService()
-geminiService = GoogleGeminiAiService()
-
 MIN_DURATION_MS = 400   # 👈 minimum for single word (tune this)
 PADDING_MS = 100
 FINAL_OUT_AUDIO ="final_audio.wav"
@@ -74,6 +73,7 @@ class VideoDubberAIService:
             return text 
         
     def build_audio_timeline(self,renderReqeust: RenderVideoRequest):
+    
         if not renderReqeust.segments:
             raise Exception("No audio segments")
 
@@ -85,7 +85,6 @@ class VideoDubberAIService:
         for seg in renderReqeust.segments:
             start_ms = int(seg.start * 1000)
             duration_ms = int((seg.end - seg.start) * 1000)
-
             # =========================
             # 🔥 FIX 1: handle zero-duration
             # =========================
@@ -120,7 +119,67 @@ class VideoDubberAIService:
 
         final_audio.export(FINAL_OUT_AUDIO, format="wav")
         return FINAL_OUT_AUDIO    
+    
+    
+    def build_audio_timeline_no_video_duration(self, segments:RenderVideoRequest):
 
+        if not segments:
+            raise Exception("No segments")
+
+        decoded = []
+        last_end_ms = 0
+
+        # =========================
+        # 🔥 STEP 1: decode + compute timeline
+        # =========================
+        for seg in segments.segments:
+            if not seg.audio_base64:
+                continue
+
+            try:
+                audio_bytes = base64.b64decode(seg.audio_base64)
+                clip = AudioSegment.from_file(io.BytesIO(audio_bytes), format="mp3")
+            except Exception as e:
+                print("decode error:", e)
+                continue
+
+            start_ms = int(seg.start * 1000)
+
+            # prevent overlap (same as JS)
+            if start_ms < last_end_ms:
+                start_ms = last_end_ms
+
+            end_ms = start_ms + len(clip)
+
+            decoded.append({
+                "clip": clip,
+                "start_ms": start_ms
+            })
+
+            last_end_ms = end_ms
+
+        # =========================
+        # 🔥 STEP 2: total duration (same as JS)
+        # =========================
+        total_duration = last_end_ms if last_end_ms > 0 else 1000
+
+        # =========================
+        # 🔥 STEP 3: build timeline
+        # =========================
+        final_audio = AudioSegment.silent(duration=total_duration)
+
+        for item in decoded:
+            final_audio = final_audio.overlay(
+                item["clip"],
+                position=item["start_ms"]
+            )
+
+        # =========================
+        # 🔥 STEP 4: export WAV
+        # =========================
+        final_audio.export(FINAL_OUT_AUDIO, format="wav")
+        self.export_video(video_path="https://sin1.contabostorage.com/f3dc5ccef6ea4e62b8fa33db51a4c53d:public/AITools/Chinese Short Films.mp4",audio_path="https://sin1.contabostorage.com/f3dc5ccef6ea4e62b8fa33db51a4c53d:video-translation/final_audio.wav",output_path="test.mp4")
+        return FINAL_OUT_AUDIO
 
 
     def match_duration(self,audio: AudioSegment, target_duration_ms: int) -> AudioSegment:
@@ -167,3 +226,162 @@ class VideoDubberAIService:
             ).set_frame_rate(sound.frame_rate)
 
         return _atempo_chain(sound, speed)
+
+    def get_duration(self,file):
+        result = subprocess.run(
+            [
+                "ffprobe", "-v", "error",
+                "-show_entries", "format=duration",
+                "-of", "default=noprint_wrappers=1:nokey=1",
+                file
+            ],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+        return float(result.stdout)
+    
+
+    # def build_atempo_chain(self,tempo: float) -> str:
+    #     filters = []
+
+    #     while tempo > 2.0:
+    #         filters.append("atempo=2.0")
+    #         tempo /= 2.0
+
+    #     while tempo < 0.5:
+    #         filters.append("atempo=1.0")
+    #         tempo /= 1.0
+
+    #     filters.append(f"atempo={tempo:.5f}")
+    #     return ",".join(filters)
+
+    # def build_atempo_chain(self, tempo: float) -> str:
+    #     if tempo > 2.0:
+    #         return "atempo=2.0"
+    #     if tempo < 0.5:
+    #         return "atempo=1.0"
+    #     return f"atempo={tempo:.5f}"
+
+
+    def build_atempo_chain(self, tempo: float) -> str:
+        if tempo <= 0:
+            return "atempo=1.0"
+
+        # your rule: force normal speed if below 1
+        if tempo < 1.0:
+            return "atempo=1.0"
+
+        # clamp upper limit only
+        tempo = min(tempo, 2.0)
+
+        return f"atempo={tempo:.5f}"
+    
+
+    def merge_segments_to_video(self, segments: List, background_video: str, output_path: str):
+        temp_dir = "temp"
+        os.makedirs(temp_dir, exist_ok=True)
+
+        inputs = []
+        filter_parts = ["anullsrc=channel_layout=stereo:sample_rate=44100,apad[base]"]
+        mix_labels = ["[base]"]
+
+        try:
+            # =========================
+            # 1. Prepare audio segments
+            # =========================
+            for i, seg in enumerate(segments):
+                if not seg.audio_base64:
+                    continue
+
+                file_path = os.path.join(temp_dir, f"a_{i}.wav")
+
+                with open(file_path, "wb") as f:
+                    f.write(base64.b64decode(seg.audio_base64))
+
+                start = max(float(seg.start), 0)
+                end = max(float(seg.end), start + 0.05)
+                target_dur = end - start
+                original_dur = self.get_duration(file_path)
+
+                if original_dur <= 0:
+                    continue
+
+                tempo = original_dur / target_dur
+                print(f"tempo {tempo}")
+                atempo = self.build_atempo_chain(tempo)
+                print(atempo)
+                delay = int(start * 1000)
+
+                input_idx = len(inputs) + 1
+                label = f"v_a{i}"
+
+                filter_parts.append(
+                    f"[{input_idx}:a]"
+                    f"aformat=sample_rates=44100:channel_layouts=stereo,aresample=44100,"
+                    f"{atempo},"
+                    f"adelay={delay}|{delay}"
+                    f"[{label}]"
+                )
+
+                mix_labels.append(f"[{label}]")
+                inputs.append(file_path)
+
+            if not mix_labels:
+                raise Exception("No valid audio generated")
+
+            # =========================
+            # 2. Mix all VO tracks
+            # =========================
+            vo = "vo"
+        
+    
+            filter_parts.append(
+                f"{''.join(mix_labels)}"
+                f"amix=inputs={len(mix_labels)}:duration=longest:dropout_transition=0:normalize=0,volume=2[aout]"
+            )
+
+            # =========================
+            # 3. Build FFmpeg command
+            # =========================
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", background_video
+            ]
+
+            for f_path in inputs:
+                cmd += ["-i", f_path]
+
+            cmd += [
+                "-filter_complex", ";".join(filter_parts),
+                "-map", "0:v",
+                "-map","[aout]",
+                "-c:v", "copy",
+
+                # audio
+                "-c:a", "aac",
+                "-b:a", "192k",
+                "-ar", "44100",
+                "-ac", "2",
+                "-shortest",
+                output_path
+            ]
+
+            print("FFMPEG:", " ".join(cmd))
+
+            result = subprocess.run(cmd, capture_output=True, text=True)
+
+            if result.returncode != 0:
+                print(result.stderr)
+                raise Exception("FFmpeg failed")
+
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            if os.path.exists(temp_dir):
+                shutil.rmtree(temp_dir)
+
+        finally:
+           for i, path in enumerate(inputs):
+                if os.path.exists(path):
+                   os.remove(path)
+
+        return output_path

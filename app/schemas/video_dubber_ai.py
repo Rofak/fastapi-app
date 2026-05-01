@@ -45,6 +45,7 @@ class VideoRequest(BaseModel):
 
 class RenderVideoRequest(BaseModel):
     video_duration_sec:float
+    video_url:str
     segments:List[VideoRequest]
 
 

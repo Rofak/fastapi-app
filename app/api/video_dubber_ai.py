@@ -53,7 +53,8 @@ def generate_voices(reqeusts:List[GenerateVoiceReqeust]):
 
 @router.post("/render/video")
 def render_video(req:RenderVideoRequest):
-    service.build_audio_timeline(req)
+    # service.build_audio_timeline(req)
+    service.merge_segments_to_video(segments=req.segments,background_video=req.video_url,output_path="hello.mp4")
     return "ok"
 
 
