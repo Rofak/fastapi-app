@@ -1,21 +1,25 @@
 import subprocess
-from app.schemas.video_dubber_ai import RenderVideoRequest,TrancribeRequest,VideoRequest
+from app.schemas.video_dubber_ai import RenderVideoRequest,TrancribeRequest,VideoRequest,RanderVideoResponse
 import requests
 from faster_whisper import WhisperModel
 from typing import List
 from app.schemas.video_dubber_ai import Segment,TranscribeResponse
 from app.services.azure_tts_service import AzureTTSService
+from app.services.s3_service import S3Service
 from pydub import AudioSegment
 import base64
 import tempfile
 import shutil
 import io
+import asyncio
 import os,uuid
 
 azureService = AzureTTSService()
+s3Service = S3Service()
 MIN_DURATION_MS = 400   # 👈 minimum for single word (tune this)
 PADDING_MS = 100
 FINAL_OUT_AUDIO ="final_audio.wav"
+
 
 class VideoDubberAIService:
     def __init__(self):
@@ -277,9 +281,22 @@ class VideoDubberAIService:
         return f"atempo={tempo:.5f}"
     
 
-    def merge_segments_to_video(self, segments: List, background_video: str, output_path: str):
+    async def merge_segments_to_video(self, req:RenderVideoRequest):
         temp_dir = "temp"
+        member_folder = os.path.join(temp_dir,f"member_{str(req.member_id)}")
+        output_dir = os.path.join(member_folder, "output")
+        audio_dir = os.path.join(member_folder, "audio")
+        
         os.makedirs(temp_dir, exist_ok=True)
+        os.makedirs(member_folder,exist_ok=True)
+        os.makedirs(output_dir,exist_ok=True)
+        os.makedirs(audio_dir,exist_ok=True)
+
+        # ✅ safe uuid string
+        file_id = uuid.uuid4().hex
+        filename = f"{file_id}.mp4"
+        output_path = os.path.join(output_dir,f"{req.member_id}_{file_id}.mp4")
+
 
         inputs = []
         filter_parts = ["anullsrc=channel_layout=stereo:sample_rate=44100,apad[base]"]
@@ -289,11 +306,11 @@ class VideoDubberAIService:
             # =========================
             # 1. Prepare audio segments
             # =========================
-            for i, seg in enumerate(segments):
+            for i, seg in enumerate(req.segments):
                 if not seg.audio_base64:
                     continue
 
-                file_path = os.path.join(temp_dir, f"a_{i}.wav")
+                file_path = os.path.join(audio_dir, f"{req.member_id}_{file_id}_{i}.wav")
 
                 with open(file_path, "wb") as f:
                     f.write(base64.b64decode(seg.audio_base64))
@@ -306,10 +323,8 @@ class VideoDubberAIService:
                 if original_dur <= 0:
                     continue
 
-                tempo = original_dur / target_dur
-                print(f"tempo {tempo}")
+                tempo = original_dur / target_dur       
                 atempo = self.build_atempo_chain(tempo)
-                print(atempo)
                 delay = int(start * 1000)
 
                 input_idx = len(inputs) + 1
@@ -345,7 +360,7 @@ class VideoDubberAIService:
             # =========================
             cmd = [
                 "ffmpeg", "-y",
-                "-i", background_video
+                "-i", req.video_url
             ]
 
             for f_path in inputs:
@@ -366,7 +381,7 @@ class VideoDubberAIService:
                 output_path
             ]
 
-            print("FFMPEG:", " ".join(cmd))
+            # print("FFMPEG:", " ".join(cmd))
 
             result = subprocess.run(cmd, capture_output=True, text=True)
 
@@ -376,12 +391,15 @@ class VideoDubberAIService:
 
         except Exception as e:
             print(f"Error occurred: {e}")
-            if os.path.exists(temp_dir):
-                shutil.rmtree(temp_dir)
+            if os.path.exists(member_folder):
+                shutil.rmtree(member_folder)
 
         finally:
            for i, path in enumerate(inputs):
                 if os.path.exists(path):
                    os.remove(path)
-
-        return output_path
+                   
+        video_url=await s3Service.upload_file_to_s3(file_path=output_path,filename=filename,member_id=str(req.member_id))
+        if os.path.exists(member_folder):
+            shutil.rmtree(member_folder)
+        return RanderVideoResponse(video_url=video_url)

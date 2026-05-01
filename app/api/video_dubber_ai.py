@@ -1,5 +1,5 @@
 from fastapi import APIRouter,Request,Depends
-from app.schemas.video_dubber_ai import TranscribeResponse,TrancribeRequest,VoiceResponse,GenerateVoiceReqeust,GenerateVoiceResponse,RenderVideoRequest,LanguageNameResponse
+from app.schemas.video_dubber_ai import TranscribeResponse,TrancribeRequest,VoiceResponse,GenerateVoiceReqeust,GenerateVoiceResponse,RenderVideoRequest,LanguageNameResponse,RanderVideoResponse
 from app.services.video_dubber_ai_service import VideoDubberAIService
 from app.services.azure_tts_service import AzureTTSService
 from app.services.google_gemini_ai_service import GoogleGeminiAiService
@@ -51,11 +51,11 @@ def generate_voices(reqeusts:List[GenerateVoiceReqeust]):
         result.append(response)
     return result
 
-@router.post("/render/video")
-def render_video(req:RenderVideoRequest):
+@router.post("/render/video",response_model=RanderVideoResponse)
+async def render_video(req:RenderVideoRequest):
     # service.build_audio_timeline(req)
-    service.merge_segments_to_video(segments=req.segments,background_video=req.video_url,output_path="hello.mp4")
-    return "ok"
+    return await service.merge_segments_to_video(req=req)
+    
 
 
 @router.get("/list_user")

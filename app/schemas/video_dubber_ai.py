@@ -44,6 +44,7 @@ class VideoRequest(BaseModel):
 
 
 class RenderVideoRequest(BaseModel):
+    member_id:int
     video_duration_sec:float
     video_url:str
     segments:List[VideoRequest]
@@ -59,3 +60,7 @@ class GeminiTranscribeResponse(BaseModel):
     start:str
     end:str
     originalText:str
+
+
+class RanderVideoResponse(BaseModel):
+    video_url:str    
