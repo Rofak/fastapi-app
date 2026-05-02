@@ -64,3 +64,11 @@ class GeminiTranscribeResponse(BaseModel):
 
 class RanderVideoResponse(BaseModel):
     video_url:str    
+
+
+class VideoDubberRequestI(BaseModel):
+    member_id:int
+    video_url:str
+    target_lang:str
+    type:Optional[str] = None
+    voice_name:str    

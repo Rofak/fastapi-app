@@ -10,6 +10,12 @@ add whisper model
 2-copy downloaded small model to whisper_model/small 
 
 
+Celery redis
+celery -A app.core.celery_app.celery worker --loglevel=info  
+celery -A app.core.celery_app.celery worker --pool=solo --loglevel=info
+celery -A app.core.celery_app.celery flower --port=5555
+
+
 ffmpeg -i a.wav -i b.wav -filter_complex " 
 [0:a]asetpts=PTS-STARTPTS,aresample=44100,atempo=2,adelay=9420|9420[a0]; 
 [1:a]asetpts=PTS-STARTPTS,aresample=44100,atempo=1.5,adelay=10100|10100[a1]; 
