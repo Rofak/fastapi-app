@@ -13,6 +13,8 @@ from app.tasks.video_task import video_dubber_task
 from celery.result import AsyncResult
 from app.core.celery_app import celery
 import json
+from app.core.cache_decorator import redis_cache
+from app.deps.validate_request import decrypt_request
 
 router = APIRouter(tags=["Video Dubber AI"],prefix="/video_dubber_ai")
 service = VideoDubberAIService()
@@ -32,12 +34,14 @@ async def transcribe(req:TrancribeRequest):
     
 
 @router.get("/list/voices",response_model=List[VoiceResponse])
+@redis_cache(3600)
 async def list_voices():
     return azureService.getVoiceNames()
 
 
 @router.get("/list/languages",response_model=List[LanguageNameResponse])
-async def list_voices():
+@redis_cache(3600)
+async def list_languages():
     return azureService.get_all_languages()
 
 @router.post("/generate/voice",response_model=GenerateVoiceResponse)
@@ -71,7 +75,7 @@ async def get_list_user(db: AsyncSession = Depends(db.get_db)):
 @router.post("/video_dubber")
 async def video_dubber(req:VideoDubberRequestI):
     if req.type is None:
-        req.type=Type.WHISPER
+        req.type=Type.WHISPER.value
         
     payload = req.model_dump(exclude_none=True)
     job = video_dubber_task.delay(payload)

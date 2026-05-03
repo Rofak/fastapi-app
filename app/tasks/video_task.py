@@ -22,7 +22,7 @@ def video_dubber_task(self,payload:dict):
     member_id=payload["member_id"]
 
   
-    self.update_state(state="PROGRESS",meta={"text":"Transcript...","video_url": ""})
+    self.update_state(state="PROGRESS",meta={"message":"Transcript...","video_url": ""})
     trancribe = TrancribeRequest(video_url=video_url,target_lang=target_lang,type=trancribe_model_type)
     print("=== start transcribe ====")
     if(trancribe.type == Type.WHISPER):

@@ -55,6 +55,7 @@ class AzureTTSService:
             )
         
     def getVoiceNames(self):
+        print("fasdfas")
         synthesizer = speechsdk.SpeechSynthesizer(speech_config=self.speech_config)
         voices = synthesizer.get_voices_async().get()
         result: List[VoiceResponse] = []

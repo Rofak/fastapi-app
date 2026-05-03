@@ -276,7 +276,7 @@ class VideoDubberAIService:
             return "atempo=1.0"
 
         # clamp upper limit only
-        tempo = min(tempo, 2.0)
+        tempo = min(tempo, 1.80)
 
         return f"atempo={tempo:.5f}"
     
