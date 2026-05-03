@@ -73,7 +73,7 @@ async def get_list_user(db: AsyncSession = Depends(db.get_db)):
     return await repo.get_all(db)
 
 @router.post("/video_dubber")
-async def video_dubber(req:VideoDubberRequestI):
+async def video_dubber(req:VideoDubberRequestI,d1=Depends(decrypt_request)):
     if req.type is None:
         req.type=Type.WHISPER.value
         

@@ -1,47 +1,20 @@
-from cryptography.hazmat.primitives import padding
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives import hashes
-from cryptography.hazmat.backends import default_backend
-import os
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import unpad
 import base64
 
-SECRET_KEY = b'12345678901234567890123456789012'  # 32 bytes = AES-256
+SECRET_KEY = "&Rh)M#pCYN4vbtqMe$QxTtA6pFZ8n%@3"   # must match frontend
+IV_KEY = "TttUa54x$UZMDXtT"           # must be 16 chars
 
 
-def encrypt(data: str) -> str:
-    iv = os.urandom(16)
+def decrypt_aes(cipher_text: str) -> str:
+    key = SECRET_KEY.encode("utf-8")
+    iv = IV_KEY.encode("utf-8")
 
-    padder = padding.PKCS7(128).padder()
-    padded_data = padder.update(data.encode()) + padder.finalize()
+    encrypted_bytes = base64.b64decode(cipher_text)
 
-    cipher = Cipher(
-        algorithms.AES(SECRET_KEY),
-        modes.CBC(iv),
-        backend=default_backend()
-    )
+    cipher = AES.new(key, AES.MODE_CBC, iv)
+    decrypted = cipher.decrypt(encrypted_bytes)
 
-    encryptor = cipher.encryptor()
-    encrypted = encryptor.update(padded_data) + encryptor.finalize()
+    unpadded = unpad(decrypted, AES.block_size)
 
-    return base64.b64encode(iv + encrypted).decode()
-
-
-def decrypt(token: str) -> str:
-    raw = base64.b64decode(token)
-
-    iv = raw[:16]
-    encrypted = raw[16:]
-
-    cipher = Cipher(
-        algorithms.AES(SECRET_KEY),
-        modes.CBC(iv),
-        backend=default_backend()
-    )
-
-    decryptor = cipher.decryptor()
-    padded = decryptor.update(encrypted) + decryptor.finalize()
-
-    unpadder = padding.PKCS7(128).unpadder()
-    data = unpadder.update(padded) + unpadder.finalize()
-
-    return data.decode()
+    return unpadded.decode("utf-8")
