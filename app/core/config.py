@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     TRANSCRIBE_TYPE:str
     IV_KEY:str
     APP_ENV:str="dev"
+    FLOWER_USER:str
+    FLOWER_PASS:str
     class Config:
         env_file = ".env"
 
