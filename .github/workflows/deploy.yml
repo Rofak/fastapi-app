@@ -45,7 +45,8 @@ jobs:
             git pull origin master
 
             echo "Rebuild Docker..."
-            docker compose up -d --build
+            docker compose up -d --build --no-deps fastapi
+            docker compose up -d nginx
 
             echo "Cleanup..."
             docker image prune -f
