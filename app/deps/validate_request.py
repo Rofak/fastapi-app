@@ -1,6 +1,9 @@
 from fastapi import Request, HTTPException, Depends
 from app.utils.aes import decrypt_aes
 from app.utils.time import is_expired
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 async def decrypt_request(request: Request):
@@ -15,15 +18,15 @@ async def decrypt_request(request: Request):
 
     try:
         decrypted = decrypt_aes(request_id)
-        print(f"decrypted :{decrypted}")
+        logger.info(f"decrypted: {decrypted}")
         ts_str, nonce = decrypted.split(":")
         timestamp = int(ts_str)
 
     except ValueError as e:
-        print("Error :",e)
+        logger.exception("Error occurred")
         raise HTTPException(status_code=400, detail="Invalid request_id")
     except Exception as e:
-        print("Error :",e)
+        logger.exception("Error occurred")
         raise HTTPException(status_code=400, detail="Invalid request_id")
 
     if is_expired(timestamp):
