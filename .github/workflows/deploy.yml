@@ -48,4 +48,4 @@ jobs:
             docker compose up -d --build
 
             echo "Cleanup..."
-            docker system prune -f
+            docker image prune -f
