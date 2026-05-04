@@ -1,9 +1,10 @@
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 import base64
+from app.core.config import settings
 
-SECRET_KEY = "&Rh)M#pCYN4vbtqMe$QxTtA6pFZ8n%@3"   # must match frontend
-IV_KEY = "TttUa54x$UZMDXtT"           # must be 16 chars
+SECRET_KEY = settings.SECRET_KEY  # must match frontend
+IV_KEY = settings.IV_KEY          # must be 16 chars
 
 
 def decrypt_aes(cipher_text: str) -> str:

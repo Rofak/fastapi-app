@@ -19,6 +19,11 @@ class Settings(BaseSettings):
     S3_BUCKET_NAME:str
     S3_ENDPOINT:str
     S3_BASE_URL:str
+    REDIS_HOST:str
+    REDIS_PASSWORD:str
+    REDIS_PORT:str
+    SECRET_KEY:str  # must match frontend
+    IV_KEY:str
     class Config:
         env_file = ".env"
 
