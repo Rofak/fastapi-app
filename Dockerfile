@@ -1,29 +1,30 @@
-FROM python:3.11-slim
+FROM python:3.12-slim
 
-# Install curl (needed for uv)
-RUN apt-get update && apt-get install -y curl
+# system deps
+RUN apt-get update && apt-get install -y \
+    curl \
+    build-essential \
+    && rm -rf /var/lib/apt/lists/*
 
-# Install uv
+# install uv
 RUN curl -Ls https://astral.sh/uv/install.sh | sh
 ENV PATH="/root/.local/bin:$PATH"
 
-# Set working directory
 WORKDIR /app
 
-# Copy dependency files first (better caching)
+# dependency caching
 COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev
 
-# Install dependencies
-RUN uv sync --frozen
-
-# Copy app
+# app source
 COPY . .
 
-# Expose port
 EXPOSE 8000
 
-# Run with Gunicorn
-CMD ["uv", "run", "gunicorn", "app.main:app", \
-     "-k", "uvicorn.workers.UvicornWorker", \
-     "-w", "4", \
-     "-b", "0.0.0.0:8000"]
+# IMPORTANT: run gunicorn directly
+CMD ["gunicorn",
+     "-k", "uvicorn.workers.UvicornWorker",
+     "app.main:app",
+     "--bind", "0.0.0.0:8000",
+     "--workers", "4",
+     "--timeout", "120"]

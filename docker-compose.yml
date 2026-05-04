@@ -4,7 +4,7 @@ services:
   fastapi:
     build: .
     container_name: video_dubber_api
-    command: gunicorn -k uvicorn.workers.UvicornWorker app.main:app --bind 0.0.0.0:8000 --workers 4
+    restart: always
     env_file:
       - .env
     ports:
@@ -15,24 +15,38 @@ services:
   redis:
     image: redis:7
     container_name: redis
+    restart: always
+    command: redis-server --appendonly yes
     ports:
       - "6379:6379"
 
   celery_worker:
     build: .
-    command: celery -A app.core.celery_app worker --loglevel=
+    container_name: celery_worker
+    restart: always
+    command: celery -A app.core.celery_app worker --loglevel=info
+    env_file:
+      - .env
     depends_on:
       - redis
 
   celery_beat:
     build: .
+    container_name: celery_beat
+    restart: always
     command: celery -A app.core.celery_app beat --loglevel=info
+    env_file:
+      - .env
     depends_on:
       - redis
 
   flower:
     build: .
+    container_name: flower
+    restart: always
     command: celery -A app.core.celery_app flower --port=5555
+    env_file:
+      - .env
     ports:
       - "5555:5555"
     depends_on:
