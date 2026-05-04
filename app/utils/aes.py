@@ -3,13 +3,18 @@ from Crypto.Util.Padding import unpad
 import base64
 from app.core.config import settings
 
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 SECRET_KEY = settings.SECRET_KEY  # must match frontend
 IV_KEY = settings.IV_KEY          # must be 16 chars
 
 
 def decrypt_aes(cipher_text: str) -> str:
-    print(f"fasdfasd secret {SECRET_KEY}")
-    print(f"fasdfasd IV {IV_KEY}")
+    logger.info(f"fasdfasd secret {SECRET_KEY}")
+    logger.info(f"fasdfasd IV {IV_KEY}")
     key = SECRET_KEY.encode("utf-8")
     iv = IV_KEY.encode("utf-8")
 
