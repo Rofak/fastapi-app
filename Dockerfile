@@ -16,7 +16,7 @@ WORKDIR /app
 # dependency caching
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev
-
+ENV PATH="/app/.venv/bin:$PATH"
 # app source
 COPY . .
 
