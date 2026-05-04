@@ -1,6 +1,7 @@
 services:
   fastapi:
     build: .
+    image: video_dubber:latest
     container_name: video_dubber_api
     restart: always
     env_file:
@@ -19,7 +20,7 @@ services:
       - "6379:6379"
 
   celery_worker:
-    build: .
+    image: video_dubber:latest
     container_name: celery_worker
     restart: always
     command: celery -A app.core.celery_app worker --loglevel=info
@@ -29,7 +30,7 @@ services:
       - redis
 
   celery_beat:
-    build: .
+    image: video_dubber:latest
     container_name: celery_beat
     restart: always
     command: celery -A app.core.celery_app beat --loglevel=info
@@ -39,7 +40,7 @@ services:
       - redis
 
   flower:
-    build: .
+    image: video_dubber:latest
     container_name: flower
     restart: always
     command: celery -A app.core.celery_app flower --port=5555
@@ -49,3 +50,14 @@ services:
       - "5555:5555"
     depends_on:
       - redis
+
+  nginx:
+    image: nginx:latest
+    container_name: nginx_proxy
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - fastapi
+    restart: always      
