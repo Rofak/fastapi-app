@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     SECRET_KEY:str 
     TRANSCRIBE_TYPE:str
     IV_KEY:str
+    APP_ENV:str="dev"
     class Config:
         env_file = ".env"
 

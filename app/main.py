@@ -4,13 +4,20 @@ from app.core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import engine
 from sqlalchemy import text
+from app.core.config import settings
 
-app = FastAPI(title=settings.APP_NAME,debug=settings.DEBUG)
+is_prod = settings.APP_ENV=="prod"
+
+app = FastAPI(title=settings.APP_NAME,
+              debug=settings.DEBUG,
+              docs_url= None if is_prod else "/docs",
+              redoc_url=None if is_prod else "/redoc",
+              openapi_url=None if is_prod else "/openapi.json")
 
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "http://192.168.0.100:3000"
+    "https://similartoolz.com"
 ]
 
 app.add_middleware(
