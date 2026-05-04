@@ -23,7 +23,7 @@ FINAL_OUT_AUDIO ="final_audio.wav"
 
 class VideoDubberAIService:
     def __init__(self):
-        self.model = WhisperModel("./whisper_model/small",device="cpu", compute_type="int8")
+        self.model = WhisperModel("./whisper_model/small",device="auto", compute_type="int8",cpu_threads=6)
 
     def run_ffmpeg(self,cmd):
         result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
