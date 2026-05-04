@@ -8,6 +8,8 @@ IV_KEY = settings.IV_KEY          # must be 16 chars
 
 
 def decrypt_aes(cipher_text: str) -> str:
+    print(f"fasdfasd secret {SECRET_KEY}")
+    print(f"fasdfasd IV {IV_KEY}")
     key = SECRET_KEY.encode("utf-8")
     iv = IV_KEY.encode("utf-8")
 
