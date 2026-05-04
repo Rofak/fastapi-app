@@ -20,7 +20,7 @@ services:
       - "6379:6379"
 
   celery_worker:
-    image: video_dubber:latest
+    build: .
     container_name: celery_worker
     restart: always
     command: celery -A app.core.celery_app worker --loglevel=info
@@ -30,7 +30,7 @@ services:
       - redis
 
   celery_beat:
-    image: video_dubber:latest
+    build: .
     container_name: celery_beat
     restart: always
     command: celery -A app.core.celery_app beat --loglevel=info
@@ -40,7 +40,7 @@ services:
       - redis
 
   flower:
-    image: video_dubber:latest
+    build: .
     container_name: flower
     restart: always
     command: celery -A app.core.celery_app flower --port=5555
