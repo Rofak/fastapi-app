@@ -1,0 +1,52 @@
+name: Deploy FastAPI
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout code
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Optional: run tests
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv sync
+
+      - name: Run tests
+        run: |
+          echo "Run your tests here"
+          # pytest
+
+      # 3. Deploy via Username and Password
+      - name: Deploy to server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          port: ${{ secrets.PORT }}
+          script: |
+            cd /var/www/video-dubber-api/video-dubber-ai-api
+
+            echo "Pull latest code..."
+            git pull origin master
+
+            echo "Rebuild Docker..."
+            docker compose down
+            docker compose up -d --build
+
+            echo "Cleanup..."
+            docker system prune -f
