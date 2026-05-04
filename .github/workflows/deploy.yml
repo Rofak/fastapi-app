@@ -46,6 +46,7 @@ jobs:
 
             echo "Rebuild Docker..."
             docker compose up -d --build --no-deps fastapi
+            sleep 5
             docker compose up -d nginx
 
             echo "Cleanup..."
