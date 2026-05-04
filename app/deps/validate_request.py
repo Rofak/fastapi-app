@@ -15,12 +15,15 @@ async def decrypt_request(request: Request):
 
     try:
         decrypted = decrypt_aes(request_id)
+        print(f"decrypted :{decrypted}")
         ts_str, nonce = decrypted.split(":")
         timestamp = int(ts_str)
 
-    except ValueError:
+    except ValueError as e:
+        print("Error :",e)
         raise HTTPException(status_code=400, detail="Invalid request_id")
-    except Exception:
+    except Exception as e:
+        print("Error :",e)
         raise HTTPException(status_code=400, detail="Invalid request_id")
 
     if is_expired(timestamp):
