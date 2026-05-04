@@ -22,7 +22,8 @@ class Settings(BaseSettings):
     REDIS_HOST:str
     REDIS_PASSWORD:str
     REDIS_PORT:str
-    SECRET_KEY:str  # must match frontend
+    SECRET_KEY:str 
+    TRANSCRIBE_TYPE:str
     IV_KEY:str
     class Config:
         env_file = ".env"

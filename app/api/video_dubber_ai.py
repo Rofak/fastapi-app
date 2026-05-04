@@ -15,6 +15,7 @@ from app.core.celery_app import celery
 import json
 from app.core.cache_decorator import redis_cache
 from app.deps.validate_request import decrypt_request
+from app.core.config import settings
 
 router = APIRouter(tags=["Video Dubber AI"],prefix="/video_dubber_ai")
 service = VideoDubberAIService()
@@ -75,7 +76,7 @@ async def get_list_user(db: AsyncSession = Depends(db.get_db)):
 @router.post("/video_dubber")
 async def video_dubber(req:VideoDubberRequestI,d1=Depends(decrypt_request)):
     if req.type is None:
-        req.type=Type.WHISPER.value
+        req.type=settings.TRANSCRIBE_TYPE
         
     payload = req.model_dump(exclude_none=True)
     job = video_dubber_task.delay(payload)
