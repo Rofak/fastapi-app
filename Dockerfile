@@ -3,6 +3,7 @@ FROM python:3.12-slim
 # system deps
 RUN apt-get update && apt-get install -y \
     curl \
+    ffmpeg \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
