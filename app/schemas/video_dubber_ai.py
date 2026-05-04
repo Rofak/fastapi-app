@@ -72,3 +72,5 @@ class VideoDubberRequestI(BaseModel):
     target_lang:str
     type:Optional[str] = None
     voice_name:str    
+
+

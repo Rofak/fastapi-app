@@ -82,7 +82,7 @@ async def video_dubber(req:VideoDubberRequestI,d1=Depends(decrypt_request)):
     return {"job_id": job.id}
 
 @router.get("/video_dubber/status/{job_id}")
-async def check_video_dubber_status(job_id: str):
+async def check_video_dubber_status(job_id:str):
     result = AsyncResult(job_id,app=celery)
     return {
             "job_id": job_id,
