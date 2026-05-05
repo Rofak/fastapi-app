@@ -4,6 +4,7 @@ from app.schemas.video_dubber_ai import VideoDubberRequestI
 from app.services.video_dubber_ai_service import VideoDubberAIService
 from app.services.azure_tts_service import AzureTTSService
 from app.services.google_gemini_ai_service import GoogleGeminiAiService
+from app.services.open_ai_servcie import OpenAIService
 from typing import List
 from app.enum.transcript import Type
 from app.deps import db
@@ -21,6 +22,7 @@ router = APIRouter(tags=["Video Dubber AI"],prefix="/video_dubber_ai")
 service = VideoDubberAIService()
 azureService = AzureTTSService() 
 geminiService = GoogleGeminiAiService()
+open_ai_service = OpenAIService()
 
 
 repo = VideoRepositiry()
@@ -30,6 +32,8 @@ repo = VideoRepositiry()
 async def transcribe(req:TrancribeRequest):
     if(req.type == Type.WHISPER):
         return service.transcribe(req)
+    elif (req.type == Type.OPEN_AI):
+        return open_ai_service.transcribe(req)
     else:
         return geminiService.transcribe_from_file_uri(req)
     

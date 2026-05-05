@@ -19,6 +19,7 @@ dependencies = [
     "flower>=2.0.1",
     "google-genai>=1.73.1",
     "gunicorn>=25.3.0",
+    "openai>=2.34.0",
     "pycryptodome>=3.23.0",
     "pydantic-settings>=2.14.0",
     "pydub>=0.25.1",

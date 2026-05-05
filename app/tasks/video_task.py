@@ -4,6 +4,7 @@ from app.services.video_dubber_ai_service import VideoDubberAIService
 from app.services.azure_tts_service import AzureTTSService
 from app.services.google_gemini_ai_service import GoogleGeminiAiService
 from typing import List
+from app.services.open_ai_servcie import OpenAIService
 from app.enum.transcript import Type,RenderState
 import asyncio
 from app.schemas.video_dubber_ai import TrancribeRequest,GenerateVoiceReqeust,GenerateVoiceResponse,TranscribeResponse,RenderVideoRequest,VideoRequest
@@ -11,6 +12,7 @@ from app.schemas.video_dubber_ai import TrancribeRequest,GenerateVoiceReqeust,Ge
 video_dubber_ai_servcice = VideoDubberAIService()
 azure_tts_service = AzureTTSService()
 gemini_service = GoogleGeminiAiService()
+open_ai_service = OpenAIService()
 
 
 @celery.task(name="video_process",bind=True)
@@ -27,6 +29,8 @@ def video_dubber_task(self,payload:dict):
     print("=== start transcribe ====")
     if(trancribe.type == Type.WHISPER):
         transcribeResponse = video_dubber_ai_servcice.transcribe(trancribe)
+    elif (trancribe.type == Type.OPEN_AI):
+        transcribeResponse = open_ai_service.transcribe(trancribe)
     else:
         transcribeResponse = gemini_service.transcribe_from_file_uri(trancribe)
     print("=== end transcribe ====")

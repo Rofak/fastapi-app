@@ -3,6 +3,7 @@ from enum import Enum
 class Type(Enum):
     GEMINI="GEMINI"
     WHISPER="WHISPER"
+    OPEN_AI="OPEN_AI"
 
 class RenderState(str,Enum):
     TRANCRIBED="TRANCRIBED"

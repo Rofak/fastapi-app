@@ -28,6 +28,7 @@ class Settings(BaseSettings):
     APP_ENV:str="dev"
     FLOWER_USER:str
     FLOWER_PASS:str
+    OPEN_AI_API_KEY:str
     class Config:
         env_file = ".env"
 
