@@ -46,8 +46,17 @@ jobs:
 
             echo "Rebuild Docker..."
             docker compose up -d --build
-            sleep 5
-            docker compose up -d nginx
+
+            echo "⏳ Waiting for FastAPI health..."
+            
+            for i in {1..20}; do
+              if curl -f http://localhost:8000/health; then
+                echo "✅ FastAPI is healthy"
+                break
+              fi
+              echo "Waiting... ($i)"
+              sleep 3
+            done
 
             echo "Cleanup..."
             docker image prune -f
