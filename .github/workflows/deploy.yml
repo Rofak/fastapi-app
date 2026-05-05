@@ -45,6 +45,7 @@ jobs:
             git pull origin master
 
             echo "Rebuild Docker..."
+            docker compose down
             docker compose up -d --build
 
             echo "Cleanup..."
