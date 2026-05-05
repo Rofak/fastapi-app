@@ -45,7 +45,7 @@ jobs:
             git pull origin master
 
             echo "Rebuild Docker..."
-            docker compose up -d --build --no-deps fastapi
+            docker compose up -d --build
             sleep 5
             docker compose up -d nginx
 
