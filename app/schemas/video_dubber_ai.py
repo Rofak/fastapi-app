@@ -71,6 +71,7 @@ class VideoDubberRequestI(BaseModel):
     video_url:str
     target_lang:str
     type:Optional[str] = None
-    voice_name:str    
+    voice_name:str
+    file_name:str    
 
 

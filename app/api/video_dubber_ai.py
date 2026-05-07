@@ -8,7 +8,7 @@ from app.services.open_ai_servcie import OpenAIService
 from typing import List
 from app.enum.transcript import Type
 from app.deps import db
-from app.repositories.videos_repo import VideoRepositiry
+from app.repositories.videos_dubbed_repo import VideosDubbedRepo
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.tasks.video_task import video_dubber_task
 from celery.result import AsyncResult
@@ -25,7 +25,7 @@ geminiService = GoogleGeminiAiService()
 open_ai_service = OpenAIService()
 
 
-repo = VideoRepositiry()
+repo = VideosDubbedRepo()
 
 
 @router.post("/transcribe", response_model=TranscribeResponse)
@@ -73,8 +73,8 @@ async def render_video(req:RenderVideoRequest):
     
 
 
-@router.get("/list_user")
-async def get_list_user(db: AsyncSession = Depends(db.get_db)):
+@router.get("/list/video-dubbed")
+async def get_list_video_dubbed(db: AsyncSession = Depends(db.get_db)):
     return await repo.get_all(db)
 
 @router.post("/video_dubber")

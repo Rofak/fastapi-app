@@ -10,3 +10,8 @@ class RenderState(str,Enum):
     GENERATE_VOICE="GENERATE_VOICE"    
     RENDER_VIDEO="RENDER_VIDEO"
     DONE="DONE"
+
+class TaskQueueStatus(str,Enum):
+    PROGRESS="PROGRESS"
+    SUCCESS="SUCCESS"
+    FAILURE="FAILURE"
