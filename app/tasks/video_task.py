@@ -51,7 +51,7 @@ async def process_video_dubbing(self, payload: dict):
     try:
         
         cut_req = CutVideoRequest(video_url=video_url,duration=20)
-        output_cut_path = await vidoe_service.cute_video(cut_req)
+        output_cut_path = await vidoe_service.cut_video(cut_req)
         self.update_state(state="PROGRESS", meta={
                           "message": "Transcript...", "video_url": ""})
         video_id = await create_video_dubbed(payload, TaskQueueStatus.PROGRESS)
