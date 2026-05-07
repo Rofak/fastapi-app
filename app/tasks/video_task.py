@@ -8,17 +8,20 @@ from app.services.open_ai_servcie import OpenAIService
 from app.enum.transcript import Type, RenderState
 from app.repositories.videos_dubbed_repo import VideosDubbedRepo
 import asyncio
+import os
 from app.enum.transcript import TaskQueueStatus
 from app.core.database import AsyncSessionLocal
-from app.schemas.video_dubber_ai import TrancribeRequest, GenerateVoiceReqeust, GenerateVoiceResponse, TranscribeResponse, RenderVideoRequest, VideoRequest, VideoDubberRequestI
+from app.schemas.video_dubber_ai import TrancribeRequest, GenerateVoiceReqeust, GenerateVoiceResponse, TranscribeResponse, RenderVideoRequest, VideoRequest, VideoDubberRequestI,CutVideoRequest
 from app.schemas.video_dubbed import VideoDubbedCreate, VideoDubbedUpdate
 from app.core.logger import logger
+from app.services.video_servcie import VideoService
 
 video_dubber_ai_servcice = VideoDubberAIService()
 azure_tts_service = AzureTTSService()
 gemini_service = GoogleGeminiAiService()
 open_ai_service = OpenAIService()
 video_dubbed_repo = VideosDubbedRepo()
+vidoe_service = VideoService()
 
 
 async def create_video_dubbed(data: dict, status: str):
@@ -46,6 +49,9 @@ async def process_video_dubbing(self, payload: dict):
     member_id = payload["member_id"]
 
     try:
+        
+        cut_req = CutVideoRequest(video_url=video_url,duration=20)
+        output_cut_path = await vidoe_service.cute_video(cut_req)
         self.update_state(state="PROGRESS", meta={
                           "message": "Transcript...", "video_url": ""})
         video_id = await create_video_dubbed(payload, TaskQueueStatus.PROGRESS)
@@ -94,6 +100,11 @@ async def process_video_dubbing(self, payload: dict):
     except Exception as e:
         await update_video_dubber_status(video_url=None, status=TaskQueueStatus.FAILURE, video_id=video_id)
         raise e
+    finally:
+        if os.path.exists(output_cut_path):
+            logger.info("Delete Cuted Video")
+            os.remove(output_cut_path)
+        
 
 
 @celery.task(name="video_process", bind=True)

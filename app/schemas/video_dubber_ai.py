@@ -74,4 +74,6 @@ class VideoDubberRequestI(BaseModel):
     voice_name:str
     file_name:str    
 
-
+class CutVideoRequest(BaseModel):
+    video_url:str
+    duration:int
