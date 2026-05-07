@@ -3,18 +3,21 @@ from app.schemas.video_dubber_ai import CutVideoRequest
 import os
 import uuid
 import asyncio
+import subprocess
+from app.core.logger import logger
 
 
 class VideoService:
 
-    async def cut_video(self, req: CutVideoRequest) -> str:
+    def cut_video(self, req: CutVideoRequest) -> str:
+        logger.info("start cutting video")
+
         file_id = uuid.uuid4().hex
         filename = f"{file_id}.mp4"
 
         temp_dir = "temp"
         video_dir = os.path.join(temp_dir, "cut_videos")
 
-        os.makedirs(temp_dir, exist_ok=True)
         os.makedirs(video_dir, exist_ok=True)
 
         output_cut_video = os.path.join(video_dir, filename)
@@ -28,17 +31,16 @@ class VideoService:
             output_cut_video
         ]
 
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
+        process = subprocess.run(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True
         )
-
-        stdout, stderr = await process.communicate()
 
         if process.returncode != 0:
             raise Exception(
-                f"FFmpeg failed: {stderr.decode()}"
+                f"FFmpeg failed: {process.stderr}"
             )
 
         return output_cut_video

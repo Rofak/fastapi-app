@@ -5,12 +5,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import engine
 from sqlalchemy import text
 from app.core.config import settings
+import asyncio
+import sys
 
-is_prod = settings.APP_ENV=="prod"
+is_prod = settings.APP_ENV == "prod"
 
 app = FastAPI(title=settings.APP_NAME,
               debug=settings.DEBUG,
-              docs_url= None if is_prod else "/docs",
+              docs_url=None if is_prod else "/docs",
               redoc_url=None if is_prod else "/redoc",
               openapi_url=None if is_prod else "/openapi.json")
 
@@ -28,6 +30,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(router, prefix="/api")
+
 
 @app.get("/health")
 def health():
