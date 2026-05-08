@@ -16,6 +16,7 @@ from app.schemas.video_dubber_ai import TrancribeRequest, GenerateVoiceReqeust, 
 from app.schemas.video_dubbed import VideoDubbedCreate, VideoDubbedUpdate
 from app.core.logger import logger
 from app.services.video_servcie import VideoService
+from app.core.async_runner import runner
 
 video_dubber_ai_servcice = VideoDubberAIService()
 azure_tts_service = AzureTTSService()
@@ -111,7 +112,7 @@ async def process_video_dubbing(self, payload: dict):
 
 @celery.task(name="video_process", bind=True)
 def video_dubber_task(self, payload: dict):
-    result = asyncio.run(process_video_dubbing(self, payload))
+    result = runner.run(process_video_dubbing(self, payload))
     return result
 
 
