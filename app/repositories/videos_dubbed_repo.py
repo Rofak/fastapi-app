@@ -1,10 +1,15 @@
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, desc
 from app.models.videos_dubbed import VideosDubbedModel
 from app.schemas.video_dubbed import VideoDubbedCreate, VideoDubbedUpdate
+from app.core.config import settings
+from app.enum.transcript import TaskQueueStatus
 
 
 class VideosDubbedRepo:
+
+    def __init__(self):
+        self.base_url = f"{settings.S3_BASE_URL}:{settings.S3_BUCKET_NAME}"
 
     async def get_all(self, db: AsyncSession):
         result = await db.execute(select(VideosDubbedModel))
@@ -14,9 +19,20 @@ class VideosDubbedRepo:
         result = await db.execute(select(VideosDubbedModel).where(VideosDubbedModel.id == video_id))
         return result.scalar_one_or_none()
 
-    async def get_by_user_id(self, db: AsyncSession, user_id: int):
-        result = await db.execute(select(VideosDubbedModel).where(VideosDubbedModel.user_id == user_id))
-        return result.scalars().all()
+    async def get_by_user_id(self, db: AsyncSession, user_id: int, page: int = 1, page_size: int = 10):
+        offset = (page-1)*page_size
+        result = await db.execute(select(VideosDubbedModel)
+                                  .where(VideosDubbedModel.user_id == user_id)
+                                  .order_by(desc(VideosDubbedModel.id))
+                                  .offset(offset)
+                                  .limit(page_size))
+        responses = result.scalars().all()
+
+        for res in responses:
+            if res.status == TaskQueueStatus.SUCCESS and res.file_url:
+                res.file_url = f"{self.base_url}/{res.file_url}"
+                res.thumbnail_url = f"{self.base_url}/{res.thumbnail_url}"
+        return responses
 
     async def create(self, db: AsyncSession, video_dubbed_create: VideoDubbedCreate):
         db_video_dubbed = VideosDubbedModel(**video_dubbed_create.model_dump())

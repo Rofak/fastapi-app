@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, Query
 from app.schemas.video_dubber_ai import TranscribeResponse, TrancribeRequest, VoiceResponse, GenerateVoiceReqeust, GenerateVoiceResponse, RenderVideoRequest, LanguageNameResponse, RanderVideoResponse
+from app.schemas.video_dubber_ai import GenerateThumbRequest, VideoDubbedListRequest
 from app.schemas.video_dubber_ai import VideoDubberRequestI
 from app.services.video_dubber_ai_service import VideoDubberAIService
 from app.services.azure_tts_service import AzureTTSService
@@ -17,12 +18,14 @@ import json
 from app.core.cache_decorator import redis_cache
 from app.deps.validate_request import decrypt_request
 from app.core.config import settings
+from app.services.video_servcie import VideoService
 
 router = APIRouter(tags=["Video Dubber AI"], prefix="/video_dubber_ai")
 service = VideoDubberAIService()
 azureService = AzureTTSService()
 geminiService = GoogleGeminiAiService()
 open_ai_service = OpenAIService()
+video_service = VideoService()
 
 
 repo = VideosDubbedRepo()
@@ -78,9 +81,9 @@ async def render_video(req: RenderVideoRequest):
     return await service.merge_segments_to_video(req=req)
 
 
-@router.get("/list/video-dubbed/{userId}")
-async def get_list_video_dubbed(userId: int, db: AsyncSession = Depends(db.get_db)):
-    return await repo.get_by_user_id(db=db, user_id=userId)
+@router.post("/list/video-dubbed")
+async def get_list_video_dubbed(req: VideoDubbedListRequest, db: AsyncSession = Depends(db.get_db)):
+    return await repo.get_by_user_id(db=db, user_id=req.member_id, page=req.page, page_size=req.page_size)
 
 
 @router.post("/video_dubber")
@@ -101,3 +104,9 @@ async def check_video_dubber_status(job_id: str):
         "status": result.state,
         "result": result.info
     }
+
+
+@router.post("/generate/thumbnail")
+async def generate_thumbnail(req: GenerateThumbRequest):
+    result = await video_service.generate_thumbnail(video_url=req.video_url, member_id=req.member_id)
+    return result

@@ -21,15 +21,17 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade():
     op.create_table(
         "videos_dubbed",
-        sa.Column("id", sa.Integer, primary_key=True,autoincrement=True),
-        sa.Column("user_id",sa.Integer),
+        sa.Column("id", sa.Integer, primary_key=True, autoincrement=True),
+        sa.Column("user_id", sa.Integer),
         sa.Column("file_name", sa.String(255)),
-        sa.Column("file_url",sa.String(255)),
-        sa.Column("status",sa.String(25)),
-        sa.Column("created_at",sa.DateTime,server_default=sa.func.now()),
-        sa.Column("updated_at",sa.DateTime,server_default=sa.func.now()),
-        sa.Column("deleted_at",sa.DateTime)
+        sa.Column("file_url", sa.String(255)),
+        sa.Column("thumbnail_url", sa.String(255)),
+        sa.Column("status", sa.String(25)),
+        sa.Column("created_at", sa.DateTime, server_default=sa.func.now()),
+        sa.Column("updated_at", sa.DateTime, server_default=sa.func.now()),
+        sa.Column("deleted_at", sa.DateTime)
     )
+
 
 def downgrade():
     op.drop_table("videos_dubbed")

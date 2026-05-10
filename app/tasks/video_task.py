@@ -26,8 +26,7 @@ video_dubbed_repo = VideosDubbedRepo()
 vidoe_service = VideoService()
 
 
-async def create_video_dubbed(db: AsyncSession, data: dict, status: str):
-    req = VideoDubberRequestI(**data)
+async def create_video_dubbed(db: AsyncSession, req: VideoDubberRequestI, status: str):
     create_req = VideoDubbedCreate(user_id=req.member_id,
                                    file_name=req.file_name,
                                    status=status)
@@ -35,36 +34,35 @@ async def create_video_dubbed(db: AsyncSession, data: dict, status: str):
     return video.id
 
 
-async def update_video_dubber_status(db: AsyncSession, video_url: str, status: str, video_id: int):
-    update = VideoDubbedUpdate(status=status, file_url=video_url)
+async def update_video_dubber_status(db: AsyncSession, video_url: str, status: str, video_id: int, thumb: str):
+    update = VideoDubbedUpdate(
+        status=status, file_url=video_url, thumbnail_url=thumb)
     await video_dubbed_repo.update_video_id(db=db, video_id=video_id, video_dubbed_update=update)
 
 
 async def process_video_dubbing(self, payload: dict):
     async with AsyncSessionLocal() as db:
-        video_url = payload["video_url"]
-        target_lang = payload["target_lang"]
-        trancribe_model_type = payload["type"]
-        voice_name = payload["voice_name"]
-        member_id = payload["member_id"]
+        req_data = VideoDubberRequestI(**payload)
 
         output_cut_path = ""
         video_id = 0
         try:
-            video_id = await create_video_dubbed(db, payload, TaskQueueStatus.PROGRESS)
-
-            cut_req = CutVideoRequest(video_url=video_url, duration=40)
-            # output_cut_path = vidoe_service.cut_video(cut_req)
-            # video_url = output_cut_path
+            video_id = await create_video_dubbed(db, req_data, TaskQueueStatus.PROGRESS)
+            video_url = req_data.video_url
             self.update_state(state="PROGRESS", meta={
                 "message": "Transcript...", "video_url": ""})
             trancribe = TrancribeRequest(
-                video_url=video_url, target_lang=target_lang, type=trancribe_model_type)
+                video_url=video_url, target_lang=req_data.target_lang, type=req_data.type)
             logger.info("=== start transcribe ====")
             if (trancribe.type == Type.WHISPER):
                 transcribeResponse = video_dubber_ai_servcice.transcribe(
                     trancribe)
             elif (trancribe.type == Type.OPEN_AI):
+                cut_req = CutVideoRequest(
+                    video_url=video_url, plan=req_data.plan, video_duration=req_data.video_duration)
+                output_cut_path = vidoe_service.cut_video(cut_req)
+                video_url = output_cut_path
+                trancribe.video_url = video_url
                 transcribeResponse = open_ai_service.transcribe(trancribe)
             else:
                 transcribeResponse = gemini_service.transcribe_from_file_uri(
@@ -75,7 +73,7 @@ async def process_video_dubbing(self, payload: dict):
             self.update_state(state="PROGRESS", meta={
                 "message": "Generate Voice...", "video_url": ""})
             generate_voice_request = map_transcribe_to_voice_requests(
-                transcribe=transcribeResponse, locale=target_lang, voice_name=voice_name)
+                transcribe=transcribeResponse, locale=req_data.target_lang, voice_name=req_data.voice_name)
             voices_result = []
             for req in generate_voice_request:
                 audio_base64 = azure_tts_service.azure_tts(
@@ -90,19 +88,21 @@ async def process_video_dubbing(self, payload: dict):
             self.update_state(state="PROGRESS", meta={
                 "message": "Render Video...", "video_url": ""})
             render_video_request = map_voice_response_to_render_video(voices=voices_result,
-                                                                      member_id=member_id,
+                                                                      member_id=req_data.member_id,
                                                                       video_url=video_url,
                                                                       video_duration=transcribeResponse.total_duration_sec)
 
             result = await video_dubber_ai_servcice.merge_segments_to_video(render_video_request)
             logger.info("===== end render video=====")
-            await update_video_dubber_status(db, result.video_url, TaskQueueStatus.SUCCESS, video_id)
+            thumb_response = await vidoe_service.generate_thumbnail(
+                video_url=video_url, member_id=req_data.member_id)
+            await update_video_dubber_status(db, result.path, TaskQueueStatus.SUCCESS, video_id, thumb_response.path)
             return {
                 "message": RenderState.DONE,
                 "video_url": result.video_url
             }
         except Exception as e:
-            await update_video_dubber_status(db, video_url=None, status=TaskQueueStatus.FAILURE, video_id=video_id)
+            await update_video_dubber_status(db, video_url=None, status=TaskQueueStatus.FAILURE, video_id=video_id, thumb=None)
             raise e
         finally:
             if os.path.exists(output_cut_path):
