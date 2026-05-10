@@ -2,6 +2,7 @@ from fastapi import Request, HTTPException, Depends
 from app.utils.aes import decrypt_aes
 from app.utils.time import is_expired
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -34,3 +35,16 @@ async def decrypt_request(request: Request):
 
     # ✅ validation only (no return data needed)
     return True
+
+
+async def decrypt_payload(request: Request):
+    body = await request.json()
+
+    payload = body.get("payload")
+    if not payload:
+        raise HTTPException(status_code=400, detail="Missing payload")
+
+    decrypted = decrypt_aes(payload)
+    data = json.loads(decrypted)
+    logger.info("request payload : %s", data)
+    return data

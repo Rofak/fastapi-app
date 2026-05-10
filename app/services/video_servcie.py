@@ -51,6 +51,7 @@ class VideoService:
 
         cmd = [
             "ffmpeg",
+            "-ss", "0",
             "-y",
             "-i", req.video_url,
             "-t", str(mix_video_duration),

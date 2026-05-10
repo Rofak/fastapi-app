@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request, Depends, Query
 from app.schemas.video_dubber_ai import TranscribeResponse, TrancribeRequest, VoiceResponse, GenerateVoiceReqeust, GenerateVoiceResponse, RenderVideoRequest, LanguageNameResponse, RanderVideoResponse
 from app.schemas.video_dubber_ai import GenerateThumbRequest, VideoDubbedListRequest
 from app.schemas.video_dubber_ai import VideoDubberRequestI
+from app.schemas.video_dubbed import VideoDubbedListResponse
 from app.services.video_dubber_ai_service import VideoDubberAIService
 from app.services.azure_tts_service import AzureTTSService
 from app.services.google_gemini_ai_service import GoogleGeminiAiService
@@ -16,7 +17,7 @@ from celery.result import AsyncResult
 from app.core.celery_app import celery
 import json
 from app.core.cache_decorator import redis_cache
-from app.deps.validate_request import decrypt_request
+from app.deps.validate_request import decrypt_request, decrypt_payload
 from app.core.config import settings
 from app.services.video_servcie import VideoService
 
@@ -81,13 +82,15 @@ async def render_video(req: RenderVideoRequest):
     return await service.merge_segments_to_video(req=req)
 
 
-@router.post("/list/video-dubbed")
-async def get_list_video_dubbed(req: VideoDubbedListRequest, db: AsyncSession = Depends(db.get_db)):
+@router.post("/list/video-dubbed", response_model=List[VideoDubbedListResponse])
+async def get_list_video_dubbed(req=Depends(decrypt_payload), db: AsyncSession = Depends(db.get_db)):
+    req = VideoDubbedListRequest(**req)
     return await repo.get_by_user_id(db=db, user_id=req.member_id, page=req.page, page_size=req.page_size)
 
 
 @router.post("/video_dubber")
-async def video_dubber(req: VideoDubberRequestI, d1=Depends(decrypt_request)):
+async def video_dubber(req=Depends(decrypt_payload)):
+    req = VideoDubberRequestI(**req)
     if req.type is None:
         req.type = settings.TRANSCRIBE_TYPE
 
