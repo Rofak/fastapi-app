@@ -1,12 +1,14 @@
 import base64
 from openai import OpenAI
-from app.schemas.video_dubber_ai import TrancribeRequest,TranscribeResponse,Segment
+from app.schemas.video_dubber_ai import TrancribeRequest, TranscribeResponse, Segment
 from app.core.config import settings
 from app.services.translate_service import TranslateService
-import os,uuid
+import os
+import uuid
 import subprocess
 
 translate_service = TranslateService()
+
 
 class OpenAIService:
 
@@ -27,14 +29,14 @@ class OpenAIService:
     def transcribe(self, req: TrancribeRequest):
         file_id = uuid.uuid4().hex
         filename = f"{file_id}.mp3"
-        
+
         temp_dir = "temp"
         audio_dir = os.path.join(temp_dir, "temp_open_ai_audio")
-    
-        os.makedirs(temp_dir, exist_ok=True)
-        os.makedirs(audio_dir,exist_ok=True)
 
-        output_audio = os.path.join(audio_dir,filename)
+        os.makedirs(temp_dir, exist_ok=True)
+        os.makedirs(audio_dir, exist_ok=True)
+
+        output_audio = os.path.join(audio_dir, filename)
 
         try:
             # 2. Convert to MP3
@@ -53,7 +55,8 @@ class OpenAIService:
             results = []
             for segment in transcript.segments:
                 original_text = segment.text.strip()
-                translated_text = translate_service.translate(original_text,target=req.target_lang)
+                translated_text = translate_service.translate(
+                    original_text, target=req.target_lang)
                 results.append(
                     Segment(
                         start=segment.start,
@@ -65,7 +68,7 @@ class OpenAIService:
                 language="",
                 total_duration_sec=0,
                 segments=results
-            )  
+            )
         finally:
             for f in [output_audio]:
                 if os.path.exists(f):

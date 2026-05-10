@@ -1,0 +1,75 @@
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, desc
+from app.models.videos_dubbed import VideosDubbedModel
+from app.schemas.video_dubbed import VideoDubbedCreate, VideoDubbedUpdate
+from app.core.config import settings
+from app.enum.transcript import TaskQueueStatus
+
+
+class VideosDubbedRepo:
+
+    def __init__(self):
+        self.base_url = f"{settings.S3_BASE_URL}:{settings.S3_BUCKET_NAME}"
+
+    async def get_all(self, db: AsyncSession):
+        result = await db.execute(select(VideosDubbedModel))
+        return result.scalars().all()
+
+    async def get_by_video_id(self, db: AsyncSession, video_id: int):
+        result = await db.execute(select(VideosDubbedModel).where(VideosDubbedModel.id == video_id))
+        return result.scalar_one_or_none()
+
+    async def get_by_user_id(self, db: AsyncSession, user_id: int, page: int = 1, page_size: int = 10):
+        offset = (page-1)*page_size
+        result = await db.execute(select(VideosDubbedModel)
+                                  .where(VideosDubbedModel.user_id == user_id)
+                                  .order_by(desc(VideosDubbedModel.id))
+                                  .offset(offset)
+                                  .limit(page_size))
+        responses = result.scalars().all()
+
+        for res in responses:
+            if res.status == TaskQueueStatus.SUCCESS and res.file_url:
+                res.file_url = f"{self.base_url}/{res.file_url}"
+                res.thumbnail_url = f"{self.base_url}/{res.thumbnail_url}"
+        return responses
+
+    async def create(self, db: AsyncSession, video_dubbed_create: VideoDubbedCreate):
+        db_video_dubbed = VideosDubbedModel(**video_dubbed_create.model_dump())
+        db.add(db_video_dubbed)
+        await db.commit()
+        await db.refresh(db_video_dubbed)
+        return db_video_dubbed
+
+    async def update(self, db: AsyncSession, user_id: int, video_dubbed_update: VideoDubbedUpdate):
+        video_dubbed = await self.get_by_user_id(db=db, user_id=user_id)
+        if not video_dubbed:
+            return None
+
+        for key, value in video_dubbed_update.dict(exclude_unset=True).items():
+            setattr(video_dubbed, key, value)
+
+        await db.commit()
+        await db.refresh(video_dubbed)
+        return video_dubbed
+
+    async def delete(self, db: AsyncSession, user_id: int):
+        video_dubbed = await self.get_by_user_id(db=db, user_id=user_id)
+        if not video_dubbed:
+            return None
+
+        await db.delete(video_dubbed)
+        await db.commit()
+        return video_dubbed
+
+    async def update_video_id(self, db: AsyncSession, video_id: int, video_dubbed_update: VideoDubbedUpdate):
+        video_dubbed = await self.get_by_video_id(db, video_id)
+        if not video_dubbed:
+            return None
+
+        for key, value in video_dubbed_update.model_dump(exclude_unset=True).items():
+            setattr(video_dubbed, key, value)
+
+        await db.commit()
+        await db.refresh(video_dubbed)
+        return video_dubbed

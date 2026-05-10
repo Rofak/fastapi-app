@@ -1,9 +1,9 @@
 import subprocess
-from app.schemas.video_dubber_ai import RenderVideoRequest,TrancribeRequest,VideoRequest,RanderVideoResponse
+from app.schemas.video_dubber_ai import RenderVideoRequest, TrancribeRequest, VideoRequest, RanderVideoResponse
 import requests
 from faster_whisper import WhisperModel
 from typing import List
-from app.schemas.video_dubber_ai import Segment,TranscribeResponse
+from app.schemas.video_dubber_ai import Segment, TranscribeResponse
 from app.services.azure_tts_service import AzureTTSService
 from app.services.s3_service import S3Service
 from pydub import AudioSegment
@@ -12,35 +12,40 @@ import tempfile
 import shutil
 import io
 import asyncio
-import os,uuid
+import os
+from app.core.logger import logger
+import uuid
 
 azureService = AzureTTSService()
 s3Service = S3Service()
 MIN_DURATION_MS = 400   # 👈 minimum for single word (tune this)
 PADDING_MS = 100
-FINAL_OUT_AUDIO ="final_audio.wav"
+FINAL_OUT_AUDIO = "final_audio.wav"
 
 
 class VideoDubberAIService:
     def __init__(self):
-        self.model = WhisperModel("./whisper_model/small",device="auto", compute_type="int8",cpu_threads=6)
+        self.model = WhisperModel(
+            "./whisper_model/small", device="auto", compute_type="int8", cpu_threads=6)
 
-    def run_ffmpeg(self,cmd):
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    def run_ffmpeg(self, cmd):
+        result = subprocess.run(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         if result.returncode != 0:
             print("FFmpeg ERROR:", result.stderr.decode())
             raise Exception("FFmpeg failed")
-        
 
-    def transcribe(self,reg:TrancribeRequest):
-        segments, info = self.model.transcribe(reg.video_url,word_timestamps=True,vad_filter=True)
-        results : List[Segment] = []
+    def transcribe(self, reg: TrancribeRequest):
+        segments, info = self.model.transcribe(
+            reg.video_url, word_timestamps=True, vad_filter=True)
+        results: List[Segment] = []
 
         for segment in segments:
             original_text = segment.text.strip()
-            translated_text = self.translate(original_text,target=reg.target_lang)
+            translated_text = self.translate(
+                original_text, target=reg.target_lang)
             results.append(
-                  Segment(
+                Segment(
                     start=segment.start,
                     end=segment.end,
                     originalText=original_text,
@@ -51,10 +56,9 @@ class VideoDubberAIService:
             language=info.language,
             total_duration_sec=info.duration,
             segments=results
-        )   
-    
-    
-    def translate(self,text, target="km"):
+        )
+
+    def translate(self, text, target="km"):
         url = "https://translate.googleapis.com/translate_a/single"
         params = {
             "client": "gtx",
@@ -74,10 +78,10 @@ class VideoDubberAIService:
             translated = "".join([item[0] for item in data[0] if item[0]])
             return translated
         except:
-            return text 
-        
-    def build_audio_timeline(self,renderReqeust: RenderVideoRequest):
-    
+            return text
+
+    def build_audio_timeline(self, renderReqeust: RenderVideoRequest):
+
         if not renderReqeust.segments:
             raise Exception("No audio segments")
 
@@ -100,7 +104,8 @@ class VideoDubberAIService:
 
             try:
                 audio_bytes = base64.b64decode(seg.audio_base64)
-                clip = AudioSegment.from_file(io.BytesIO(audio_bytes), format="mp3")
+                clip = AudioSegment.from_file(
+                    io.BytesIO(audio_bytes), format="mp3")
             except Exception as e:
                 print("decode error:", e)
                 continue
@@ -122,10 +127,9 @@ class VideoDubberAIService:
             last_end_ms = start_ms + len(clip)
 
         final_audio.export(FINAL_OUT_AUDIO, format="wav")
-        return FINAL_OUT_AUDIO    
-    
-    
-    def build_audio_timeline_no_video_duration(self, segments:RenderVideoRequest):
+        return FINAL_OUT_AUDIO
+
+    def build_audio_timeline_no_video_duration(self, segments: RenderVideoRequest):
 
         if not segments:
             raise Exception("No segments")
@@ -142,7 +146,8 @@ class VideoDubberAIService:
 
             try:
                 audio_bytes = base64.b64decode(seg.audio_base64)
-                clip = AudioSegment.from_file(io.BytesIO(audio_bytes), format="mp3")
+                clip = AudioSegment.from_file(
+                    io.BytesIO(audio_bytes), format="mp3")
             except Exception as e:
                 print("decode error:", e)
                 continue
@@ -182,11 +187,11 @@ class VideoDubberAIService:
         # 🔥 STEP 4: export WAV
         # =========================
         final_audio.export(FINAL_OUT_AUDIO, format="wav")
-        self.export_video(video_path="https://sin1.contabostorage.com/f3dc5ccef6ea4e62b8fa33db51a4c53d:public/AITools/Chinese Short Films.mp4",audio_path="https://sin1.contabostorage.com/f3dc5ccef6ea4e62b8fa33db51a4c53d:video-translation/final_audio.wav",output_path="test.mp4")
+        self.export_video(video_path="https://sin1.contabostorage.com/f3dc5ccef6ea4e62b8fa33db51a4c53d:public/AITools/Chinese Short Films.mp4",
+                          audio_path="https://sin1.contabostorage.com/f3dc5ccef6ea4e62b8fa33db51a4c53d:video-translation/final_audio.wav", output_path="test.mp4")
         return FINAL_OUT_AUDIO
 
-
-    def match_duration(self,audio: AudioSegment, target_duration_ms: int) -> AudioSegment:
+    def match_duration(self, audio: AudioSegment, target_duration_ms: int) -> AudioSegment:
         current = len(audio)
 
         if current == 0:
@@ -202,14 +207,11 @@ class VideoDubberAIService:
         return audio._spawn(audio.raw_data, overrides={
             "frame_rate": int(audio.frame_rate * speed)
         }).set_frame_rate(audio.frame_rate)
-    
 
-
-    def change_speed(self,audio: AudioSegment, speed: float):
+    def change_speed(self, audio: AudioSegment, speed: float):
         return audio._spawn(audio.raw_data, overrides={
             "frame_rate": int(audio.frame_rate * speed)
         }).set_frame_rate(audio.frame_rate)
-    
 
     def change_speed(self, sound: AudioSegment, speed: float) -> AudioSegment:
         if speed <= 0:
@@ -231,7 +233,7 @@ class VideoDubberAIService:
 
         return _atempo_chain(sound, speed)
 
-    def get_duration(self,file):
+    def get_duration(self, file):
         result = subprocess.run(
             [
                 "ffprobe", "-v", "error",
@@ -243,7 +245,6 @@ class VideoDubberAIService:
             stderr=subprocess.PIPE
         )
         return float(result.stdout)
-    
 
     # def build_atempo_chain(self,tempo: float) -> str:
     #     filters = []
@@ -266,7 +267,6 @@ class VideoDubberAIService:
     #         return "atempo=1.0"
     #     return f"atempo={tempo:.5f}"
 
-
     def build_atempo_chain(self, tempo: float) -> str:
         if tempo <= 0:
             return "atempo=1.0"
@@ -279,27 +279,27 @@ class VideoDubberAIService:
         tempo = min(tempo, 1.80)
 
         return f"atempo={tempo:.5f}"
-    
 
-    async def merge_segments_to_video(self, req:RenderVideoRequest):
+    async def merge_segments_to_video(self, req: RenderVideoRequest):
         temp_dir = "temp"
-        member_folder = os.path.join(temp_dir,f"member_{str(req.member_id)}")
+        member_folder = os.path.join(temp_dir, f"member_{str(req.member_id)}")
         output_dir = os.path.join(member_folder, "output")
         audio_dir = os.path.join(member_folder, "audio")
-        
+
         os.makedirs(temp_dir, exist_ok=True)
-        os.makedirs(member_folder,exist_ok=True)
-        os.makedirs(output_dir,exist_ok=True)
-        os.makedirs(audio_dir,exist_ok=True)
+        os.makedirs(member_folder, exist_ok=True)
+        os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(audio_dir, exist_ok=True)
 
         # ✅ safe uuid string
         file_id = uuid.uuid4().hex
         filename = f"{file_id}.mp4"
-        output_path = os.path.join(output_dir,f"{req.member_id}_{file_id}.mp4")
-
+        output_path = os.path.join(
+            output_dir, f"{req.member_id}_{file_id}.mp4")
 
         inputs = []
-        filter_parts = ["anullsrc=channel_layout=stereo:sample_rate=44100,apad[base]"]
+        filter_parts = [
+            "anullsrc=channel_layout=stereo:sample_rate=44100,apad[base]"]
         mix_labels = ["[base]"]
 
         try:
@@ -310,7 +310,9 @@ class VideoDubberAIService:
                 if not seg.audio_base64:
                     continue
 
-                file_path = os.path.join(audio_dir, f"{req.member_id}_{file_id}_{i}.wav")
+                audio_file_id = uuid.uuid4().hex
+                file_path = os.path.join(
+                    audio_dir, f"{req.member_id}_{audio_file_id}_{i}.wav")
 
                 with open(file_path, "wb") as f:
                     f.write(base64.b64decode(seg.audio_base64))
@@ -323,7 +325,7 @@ class VideoDubberAIService:
                 if original_dur <= 0:
                     continue
 
-                tempo = original_dur / target_dur       
+                tempo = original_dur / target_dur
                 atempo = self.build_atempo_chain(tempo)
                 delay = int(start * 1000)
 
@@ -348,8 +350,7 @@ class VideoDubberAIService:
             # 2. Mix all VO tracks
             # =========================
             vo = "vo"
-        
-    
+
             filter_parts.append(
                 f"{''.join(mix_labels)}"
                 f"amix=inputs={len(mix_labels)}:duration=longest:dropout_transition=0:normalize=0,volume=2[aout]"
@@ -369,7 +370,7 @@ class VideoDubberAIService:
             cmd += [
                 "-filter_complex", ";".join(filter_parts),
                 "-map", "0:v",
-                "-map","[aout]",
+                "-map", "[aout]",
                 "-c:v", "copy",
 
                 # audio
@@ -387,19 +388,23 @@ class VideoDubberAIService:
 
             if result.returncode != 0:
                 print(result.stderr)
-                raise Exception("FFmpeg failed")
+                raise Exception(f"FFmpeg failed:\n{result.stderr}")
 
+            s3_response = await s3Service.upload_file_to_s3(file_path=output_path, filename=filename, member_id=str(req.member_id))
+
+            for i, path in enumerate(inputs):
+                if os.path.exists(path):
+                    os.remove(path)
+
+            if os.path.exists(output_path):
+                os.remove(output_path)
+
+            return RanderVideoResponse(video_url=s3_response.video_url, path=s3_response.path)
         except Exception as e:
             print(f"Error occurred: {e}")
-            if os.path.exists(member_folder):
-                shutil.rmtree(member_folder)
-
-        finally:
-           for i, path in enumerate(inputs):
+            for i, path in enumerate(inputs):
                 if os.path.exists(path):
-                   os.remove(path)
-                   
-        video_url=await s3Service.upload_file_to_s3(file_path=output_path,filename=filename,member_id=str(req.member_id))
-        if os.path.exists(member_folder):
-            shutil.rmtree(member_folder)
-        return RanderVideoResponse(video_url=video_url)
+                    os.remove(path)
+
+            if os.path.exists(output_path):
+                os.remove(output_path)

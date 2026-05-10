@@ -9,6 +9,9 @@ add whisper model
 1-create folder whisper_model/small
 2-copy downloaded small model to whisper_model/small 
 
+▶️ 6. Run migration
+alembic upgrade head
+
 
 Celery redis
 celery -A app.core.celery_app.celery worker --loglevel=info  
