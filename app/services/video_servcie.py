@@ -32,7 +32,7 @@ class VideoService:
         if req.plan == UserPlan.FREE:
             mix_video_duration = MAX_FREE_DURATION
         elif req.plan == UserPlan.PREMIUM and req.video_duration > MAX_PREMIUM_DURATION:
-            # mix_video_duration = MAX_PREMIUM_DURATION
+            mix_video_duration = MAX_PREMIUM_DURATION
             return req.video_url
         else:
             return req.video_url
