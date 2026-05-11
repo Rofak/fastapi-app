@@ -48,7 +48,12 @@ class OpenAIService:
                     model="gpt-4o-transcribe-diarize",
                     file=audio_file,
                     response_format="diarized_json",
-                    chunking_strategy="auto",
+                    chunking_strategy={
+                        "type": "server_vad",
+                        "threshold": 0.4,
+                        "prefix_padding_ms": 300,
+                        "silence_duration_ms": 400
+                    },
                 )
 
             # 4. Process result
