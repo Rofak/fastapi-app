@@ -24,7 +24,10 @@ class S3Service:
         ) as s3:
 
             with open(file_path, "rb") as f:
-                await s3.upload_fileobj(f, self.bucket, key)
+                await s3.upload_fileobj(f, self.bucket, key, ExtraArgs={
+                    "ContentType": "video/mp4",
+                    "ContentDisposition": f'attachment; filename="{filename}"'
+                })
         video_url = f"{self.base_url}:{self.bucket}/{key}"
         path = key
         return S3UploadResponse(video_url=video_url, path=path)
