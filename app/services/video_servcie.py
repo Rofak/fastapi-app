@@ -108,7 +108,7 @@ class VideoService:
                     f"FFmpeg failed: {process.stderr}"
                 )
 
-            result = await s3_service.upload_file_to_s3(
+            result = await s3_service.upload_file(
                 file_path=thumb_output, filename=filename, member_id=member_id)
             return result
         finally:
