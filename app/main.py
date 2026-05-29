@@ -19,7 +19,7 @@ app = FastAPI(title=settings.APP_NAME,
 origins = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
-    "https://similartoolz.app"
+    "https://similartoolz.net"
 ]
 
 app.add_middleware(
