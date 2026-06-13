@@ -11,7 +11,7 @@ import sys
 
 s3_service = S3Service()
 
-MAX_PREMIUM_DURATION = 150
+MAX_PREMIUM_DURATION = 300
 MAX_FREE_DURATION = 40
 
 

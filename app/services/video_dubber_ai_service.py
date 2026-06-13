@@ -26,7 +26,7 @@ FINAL_OUT_AUDIO = "final_audio.wav"
 class VideoDubberAIService:
     def __init__(self):
         self.model = WhisperModel(
-            "./whisper_model/small", device="auto", compute_type="int8", cpu_threads=6)
+            "./whisper_model/small", device="cpu", compute_type="int8", cpu_threads=6)
 
     def run_ffmpeg(self, cmd):
         result = subprocess.run(
@@ -383,6 +383,137 @@ class VideoDubberAIService:
             ]
 
             # print("FFMPEG:", " ".join(cmd))
+
+            result = subprocess.run(cmd, capture_output=True, text=True)
+
+            if result.returncode != 0:
+                print(result.stderr)
+                raise Exception(f"FFmpeg failed:\n{result.stderr}")
+
+            s3_response = await s3Service.upload_file_to_s3(file_path=output_path, filename=filename, member_id=str(req.member_id))
+
+            for i, path in enumerate(inputs):
+                if os.path.exists(path):
+                    os.remove(path)
+
+            if os.path.exists(output_path):
+                os.remove(output_path)
+
+            return RanderVideoResponse(video_url=s3_response.video_url, path=s3_response.path)
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            for i, path in enumerate(inputs):
+                if os.path.exists(path):
+                    os.remove(path)
+
+            if os.path.exists(output_path):
+                os.remove(output_path)
+
+    async def merge_segments_to_video_no_vacals(self, req: RenderVideoRequest, no_vacals_audio_path: str):
+        temp_dir = "temp"
+        member_folder = os.path.join(temp_dir, f"member_{str(req.member_id)}")
+        output_dir = os.path.join(member_folder, "output")
+        audio_dir = os.path.join(member_folder, "audio")
+
+        os.makedirs(temp_dir, exist_ok=True)
+        os.makedirs(member_folder, exist_ok=True)
+        os.makedirs(output_dir, exist_ok=True)
+        os.makedirs(audio_dir, exist_ok=True)
+
+        # ✅ safe uuid string
+        file_id = uuid.uuid4().hex
+        filename = f"{file_id}.mp4"
+        output_path = os.path.join(
+            output_dir, f"{req.member_id}_{file_id}.mp4")
+
+        inputs = []
+        filter_parts = [
+            f"[1:a]aformat=sample_rates=44100:channel_layouts=stereo,volume=0.3[bg]"
+        ]
+        mix_labels = ["[bg]"]
+
+        try:
+            # =========================
+            # 1. Prepare audio segments
+            # =========================
+            for i, seg in enumerate(req.segments):
+                if not seg.audio_base64:
+                    continue
+
+                audio_file_id = uuid.uuid4().hex
+                file_path = os.path.join(
+                    audio_dir, f"{req.member_id}_{audio_file_id}_{i}.wav")
+
+                with open(file_path, "wb") as f:
+                    f.write(base64.b64decode(seg.audio_base64))
+
+                start = max(float(seg.start), 0)
+                end = max(float(seg.end), start + 0.05)
+                target_dur = end - start
+                original_dur = self.get_duration(file_path)
+
+                if original_dur <= 0:
+                    continue
+
+                tempo = original_dur / target_dur
+                atempo = self.build_atempo_chain(tempo)
+                delay = int(start * 1000)
+
+                input_idx = len(inputs) + 2
+                label = f"v_a{i}"
+
+                filter_parts.append(
+                    f"[{input_idx}:a]"
+                    f"aformat=sample_rates=44100:channel_layouts=stereo,aresample=44100,"
+                    f"{atempo},"
+                    f"adelay={delay}|{delay}"
+                    f"[{label}]"
+                )
+
+                mix_labels.append(f"[{label}]")
+                inputs.append(file_path)
+
+            if not mix_labels:
+                raise Exception("No valid audio generated")
+
+            # =========================
+            # 2. Mix all VO tracks
+            # =========================
+            vo = "vo"
+
+            filter_parts.append(
+                f"{''.join(mix_labels)}"
+                f"amix=inputs={len(mix_labels)}:duration=longest:dropout_transition=0:normalize=0,volume=2[aout]"
+            )
+
+            # =========================
+            # 3. Build FFmpeg command
+            # =========================
+            cmd = [
+                "ffmpeg", "-y",
+                "-i", req.video_url,
+                "-i", no_vacals_audio_path
+            ]
+
+            for f_path in inputs:
+                cmd += ["-i", f_path]
+
+            cmd += [
+                "-filter_complex", ";".join(filter_parts),
+                "-map", "0:v",
+                "-map", "[aout]",
+                "-c:v", "copy",
+
+                # audio
+                "-c:a", "aac",
+                "-b:a", "192k",
+                "-ar", "44100",
+                "-ac", "2",
+                "-shortest",
+                output_path
+            ]
+
+            print("FFMPEG:", " ".join(cmd))
 
             result = subprocess.run(cmd, capture_output=True, text=True)
 

@@ -63,7 +63,7 @@ async def process_video_dubbing(self, payload: dict):
                 output_cut_path = vidoe_service.cut_video(cut_req)
                 video_url = output_cut_path
                 trancribe.video_url = video_url
-                transcribeResponse = open_ai_service.transcribe(trancribe)
+                transcribeResponse = await open_ai_service.transcribe(trancribe)
             else:
                 transcribeResponse = gemini_service.transcribe_from_file_uri(
                     trancribe)
@@ -92,7 +92,8 @@ async def process_video_dubbing(self, payload: dict):
                                                                       video_url=video_url,
                                                                       video_duration=transcribeResponse.total_duration_sec)
 
-            result = await video_dubber_ai_servcice.merge_segments_to_video(render_video_request)
+            # result = await video_dubber_ai_servcice.merge_segments_to_video(render_video_request)
+            result = await video_dubber_ai_servcice.merge_segments_to_video_no_vacals(render_video_request, transcribeResponse.no_vacals_audio_path)
             logger.info("===== end render video=====")
             thumb_response = await vidoe_service.generate_thumbnail(
                 video_url=video_url, member_id=req_data.member_id)

@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from app.api.video_dubber_ai import router
+from app.api.voice_removal import router as voice_removal
 from app.core.config import settings
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.database import engine
@@ -30,6 +31,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.include_router(router, prefix="/api")
+app.include_router(voice_removal, prefix="/api")
 
 
 @app.get("/health")

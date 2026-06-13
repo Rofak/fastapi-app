@@ -32,6 +32,7 @@ class VideosDubbedRepo:
             if res.status == TaskQueueStatus.SUCCESS and res.file_url:
                 res.file_url = f"{self.base_url}/{res.file_url}"
                 res.thumbnail_url = f"{self.base_url}/{res.thumbnail_url}"
+
         return responses
 
     async def create(self, db: AsyncSession, video_dubbed_create: VideoDubbedCreate):

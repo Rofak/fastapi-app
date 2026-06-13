@@ -15,6 +15,7 @@ class TranscribeResponse(BaseModel):
     language: str
     segments: List[Segment]
     total_duration_sec: float
+    no_vacals_audio_path: Optional[str] = None
 
 
 class TrancribeRequest(BaseModel):
